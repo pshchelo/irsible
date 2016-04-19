@@ -77,6 +77,15 @@ if [ "$IRSIBLE_FOR_ANSIBLE" = true ]; then
         # install compiled qemu-utils
         cp $WORKDIR/build_files/qemu-utils.* $FINALDIR/tmp/builtin/optional
         echo "qemu-utils.tcz" | $TC_CHROOT_CMD tee -a /tmp/builtin/onboot.lst
+        # install python-requests - used in streaming download of raw images
+        cd $FINALDIR/tmp
+        wget https://github.com/kennethreitz/requests/archive/v2.9.1.tar.gz -O requests-2.9.1.tar.gz
+        tar xzf requests-2.9.1.tar.gz
+        cd $WORKDIR
+        $CHROOT_CMD sh -c "cd /tmp/requests-2.9.1 && python setup.py install"
+        sudo rm -rf $FINALDIR/tmp/requests-2.9.1*
+        # save some MB, leave only compiled python code
+        sudo find $FINALDIR/usr/local/lib/python2.7/site-packages/requests/ -type f -name "*.py" -exec rm {} +
     fi
 fi
 
