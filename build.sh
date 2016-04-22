@@ -57,7 +57,7 @@ $CHROOT_CMD touch /etc/sysconfig/tcuser
 $CHROOT_CMD chmod a+rwx /etc/sysconfig/tcuser
 
 mkdir $BUILDDIR/tmp/overides
-cp $WORKDIR/build_files/fakeuname $BUILDDIR/tmp/overides/uname
+cp $WORKDIR/build_files/fakeuname6 $BUILDDIR/tmp/overides/uname
 
 while read line; do
     $TC_CHROOT_CMD tce-load -wci $line

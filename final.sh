@@ -21,6 +21,12 @@ TC_CHROOT_CMD="sudo chroot --userspec=$TC:$STAFF $FINALDIR /usr/bin/env -i PATH=
 
 echo "Finalising irsible:"
 
+cd $WORKDIR/build_files
+rm -f corepure64.gz vmlinuz64
+wget -N http://distro.ibiblio.org/tinycorelinux/7.x/x86_64/release/distribution_files/corepure64.gz
+wget -N http://distro.ibiblio.org/tinycorelinux/7.x/x86_64/release/distribution_files/vmlinuz64
+cd $WORKDIR
+
 sudo -v
 
 if [ -d "$FINALDIR" ]; then
@@ -49,13 +55,18 @@ echo "tc" | $CHROOT_CMD tee -a /etc/sysconfig/tcuser
 sudo mount --bind /proc $FINALDIR/proc
 # Fake uname to get correct dependencies
 mkdir $FINALDIR/tmp/overides                                                                                                                                                                                    
-cp $WORKDIR/build_files/fakeuname $FINALDIR/tmp/overides/uname
+cp $WORKDIR/build_files/fakeuname7 $FINALDIR/tmp/overides/uname
 
 # Install and configure bare minimum for SSH access
 $TC_CHROOT_CMD tce-load -wi openssh
 # Configure OpsnSSH
 $CHROOT_CMD cp /usr/local/etc/ssh/sshd_config_example /usr/local/etc/ssh/sshd_config || $CHROOT_CMD cp /usr/local/etc/ssh/sshd_config.orig /usr/local/etc/ssh/sshd_config
 echo "PasswordAuthentication no" | $CHROOT_CMD tee -a /usr/local/etc/ssh/sshd_config
+$CHROOT_CMD /usr/local/etc/init.d/openssh keygen
+echo "HostKey /usr/local/etc/ssh/ssh_host_rsa_key" | $CHROOT_CMD tee -a /usr/local/etc/ssh/sshd_config
+echo "HostKey /usr/local/etc/ssh/ssh_host_dsa_key" | $CHROOT_CMD tee -a /usr/local/etc/ssh/sshd_config
+
+
 # setup user and SSH keys
 $CHROOT_CMD mkdir -p /home/tc
 $CHROOT_CMD chown -R tc.staff /home/tc
@@ -81,7 +92,6 @@ if [ "$IRSIBLE_FOR_ANSIBLE" = true ]; then
         cd $FINALDIR/tmp
         wget https://github.com/kennethreitz/requests/archive/v2.9.1.tar.gz -O requests-2.9.1.tar.gz
         tar xzf requests-2.9.1.tar.gz
-        cd $WORKDIR
         $CHROOT_CMD sh -c "cd /tmp/requests-2.9.1 && python setup.py install"
         sudo rm -rf $FINALDIR/tmp/requests-2.9.1*
         # save some MB, leave only compiled python code
@@ -124,4 +134,5 @@ fi
 cp "$WORKDIR/build_files/vmlinuz64" "$WORKDIR/irsible${branch_ext}.vmlinuz"
 
 # Create tar.gz containing irsible files
+cd $WORKDIR
 tar czf irsible${branch_ext}.tar.gz irsible${branch_ext}.gz irsible${branch_ext}.vmlinuz
