@@ -14,11 +14,12 @@ Included packages
 
   * requests 2.9.1
 
+* coreutils
 * parted
 * util-linux
 * qemu-utils (build from 2.5.1 source)
 
-Current version takes about 75MB of RAM when booted.
+Current version takes about 80MB of RAM when booted.
 
 Thus with this bootstrap image and Ironic's ansible-deploy driver
 128MB for a virtual baremetal instance is enough to download
