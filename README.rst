@@ -111,6 +111,7 @@ Creating a bare-minimal image
 
 By default the build process will also install Python into the image,
 so that is becomes usable with Ansible right away.
+
 If you want to create a very bare-minimal image to have it smaller and
 install everything at run-time, set this variable in the shell
 before building the image::
@@ -143,18 +144,20 @@ Using with Ansible
 ==================
 
 The user with configured SSH access is ``tc`` (default user in TinyCore),
-use this username in your playbooks.
+use this username in your Ansible inventory or command line arguments.
 
 This user already has password-less sudo permissions.
 
-This image is very stripped down
-(especially minimal variants as described above):
+As this image is TinyCore-based, it lacks any standard package manager
+like ``apt`` or ``yum``, use ``tce-*`` commands for package management
+at run-time.
 
-* lacks any standard package manager like ``apt`` or ``yum``
-* powered by `busybox`
-* lacks ``bash`` and many standard GNU tools
+This image does not has ``bash`` installed, so do not use bash-isms in your
+shell scripts that are to be run in this image.
 
-Do not rely on those in your Ansible playbooks when working with this image.
+Also, the minimal variants (as described above) are powered by ``busybox``
+and lack many standard GNU tools,
+do not rely on those in your Ansible playbooks when working with such images.
 
 On the other hand those can be installed at run-time with
 ::
@@ -162,5 +165,5 @@ On the other hand those can be installed at run-time with
     tce-load -wi coreutils util-linux bash
 
 so you can easily extend the ``bootstrap.yaml`` playbook. See this link for
-more info on GNU/Linux compatibility:
+more info on TinyCore's GNU/Linux compatibility:
 http://tinycorelinux.net/faq.html#compatibility
