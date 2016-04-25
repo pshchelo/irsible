@@ -19,8 +19,8 @@ iso:
 clean: clean_cache clean_build clean_final clean_iso
 
 clean_cache:
-	rm -f build_files/corepure64.gz
-	rm -f build_files/vmlinuz64
+	rm -f build_files/corepure64*.gz
+	rm -f build_files/vmlinuz64*
 
 clean_build:
 	sudo -v

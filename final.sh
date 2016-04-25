@@ -3,6 +3,7 @@
 set -ex
 WORKDIR=$(readlink -f $0 | xargs dirname)
 FINALDIR="$WORKDIR/final"
+FINAL_TC_VER=7
 
 IRSIBLE_SSH_KEY=${IRSIBLE_SSH_KEY:-$WORKDIR/irsible_key.pub}
 IRSIBLE_FOR_ANSIBLE=${IRSIBLE_FOR_ANSIBLE:-true}
@@ -22,9 +23,8 @@ TC_CHROOT_CMD="sudo chroot --userspec=$TC:$STAFF $FINALDIR /usr/bin/env -i PATH=
 echo "Finalising irsible:"
 
 cd $WORKDIR/build_files
-rm -f corepure64.gz vmlinuz64
-wget -N http://distro.ibiblio.org/tinycorelinux/7.x/x86_64/release/distribution_files/corepure64.gz
-wget -N http://distro.ibiblio.org/tinycorelinux/7.x/x86_64/release/distribution_files/vmlinuz64
+wget -N http://distro.ibiblio.org/tinycorelinux/${FINAL_TC_VER}.x/x86_64/release/distribution_files/corepure64.gz -O corepure64-${FINAL_TC_VER}.gz
+wget -N http://distro.ibiblio.org/tinycorelinux/${FINAL_TC_VER}.x/x86_64/release/distribution_files/vmlinuz64 -O vmlinuz64-${FINAL_TC_VER}
 cd $WORKDIR
 
 sudo -v
@@ -36,7 +36,7 @@ fi
 mkdir "$FINALDIR"
 
 # Extract rootfs from .gz file
-( cd "$FINALDIR" && zcat $WORKDIR/build_files/corepure64.gz | sudo cpio -i -H newc -d )
+( cd "$FINALDIR" && zcat $WORKDIR/build_files/corepure64-${FINAL_TC_VER}.gz | sudo cpio -i -H newc -d )
 
 #####################################
 # Setup Final Dir
@@ -55,7 +55,7 @@ echo "tc" | $CHROOT_CMD tee -a /etc/sysconfig/tcuser
 sudo mount --bind /proc $FINALDIR/proc
 # Fake uname to get correct dependencies
 mkdir $FINALDIR/tmp/overides                                                                                                                                                                                    
-cp $WORKDIR/build_files/fakeuname7 $FINALDIR/tmp/overides/uname
+cp $WORKDIR/build_files/fakeuname${FINAL_TC_VER} $FINALDIR/tmp/overides/uname
 
 # Install and configure bare minimum for SSH access
 $TC_CHROOT_CMD tce-load -wi openssh
@@ -131,7 +131,7 @@ fi
 ( cd "$FINALDIR" && sudo find | sudo cpio -o -H newc | gzip -9 > "$WORKDIR/irsible${branch_ext}.gz" )
 
 # Copy vmlinuz to new name
-cp "$WORKDIR/build_files/vmlinuz64" "$WORKDIR/irsible${branch_ext}.vmlinuz"
+cp "$WORKDIR/build_files/vmlinuz64-${FINAL_TC_VER}" "$WORKDIR/irsible${branch_ext}.vmlinuz"
 
 # Create tar.gz containing irsible files
 cd $WORKDIR

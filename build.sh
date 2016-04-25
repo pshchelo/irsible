@@ -11,6 +11,7 @@ fi
 
 WORKDIR=$(readlink -f $0 | xargs dirname)
 BUILDDIR="$WORKDIR/build"
+BUILD_TC_VER=6
 
 TC=1001
 STAFF=50
@@ -26,8 +27,7 @@ echo "Building irsible:"
 ##############################################
 
 cd $WORKDIR/build_files
-wget -N http://distro.ibiblio.org/tinycorelinux/6.x/x86_64/release/distribution_files/corepure64.gz
-wget -N http://distro.ibiblio.org/tinycorelinux/6.x/x86_64/release/distribution_files/vmlinuz64
+wget -N http://distro.ibiblio.org/tinycorelinux/${BUILD_TC_VER}.x/x86_64/release/distribution_files/corepure64.gz -O corepure64-${BUILD_TC_VER}.gz
 cd $WORKDIR
 
 # Finish here if not building for Ironic's ansible-deploy
@@ -44,7 +44,7 @@ fi
 mkdir "$BUILDDIR"
 
 # Extract rootfs from .gz file
-( cd "$BUILDDIR" && zcat $WORKDIR/build_files/corepure64.gz | sudo cpio -i -H newc -d )
+( cd "$BUILDDIR" && zcat $WORKDIR/build_files/corepure64-${BUILD_TC_VER}.gz | sudo cpio -i -H newc -d )
 
 # Download Qemu-utils source
 git clone git://git.qemu-project.org/qemu.git $BUILDDIR/tmp/qemu --depth=1 --branch v2.5.1
@@ -57,7 +57,7 @@ $CHROOT_CMD touch /etc/sysconfig/tcuser
 $CHROOT_CMD chmod a+rwx /etc/sysconfig/tcuser
 
 mkdir $BUILDDIR/tmp/overides
-cp $WORKDIR/build_files/fakeuname6 $BUILDDIR/tmp/overides/uname
+cp $WORKDIR/build_files/fakeuname${BUILD_TC_VER} $BUILDDIR/tmp/overides/uname
 
 while read line; do
     $TC_CHROOT_CMD tce-load -wci $line

@@ -4,7 +4,7 @@
 build
 final
 *.vmlinuz
-vmlinuz64
+vmlinuz64*
 *.iso
 *.tcz*
 squashfs-root
