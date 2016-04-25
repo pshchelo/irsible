@@ -1,16 +1,16 @@
 #!/bin/bash
 
 set -ex
-IRSIBLE_SSH_KEY=${IRSIBLE_SSH_KEY:-$HOME/.ssh/id_rsa.pub}
+WORKDIR=$(readlink -f $0 | xargs dirname)
+FINALDIR="$WORKDIR/final"
+
+IRSIBLE_SSH_KEY=${IRSIBLE_SSH_KEY:-$WORKDIR/irsible_key.pub}
 IRSIBLE_FOR_ANSIBLE=${IRSIBLE_FOR_ANSIBLE:-true}
 IRSIBLE_FOR_IRONIC=${IRSIBLE_FOR_IRONIC:-true}
 
 if [ "$IRSIBLE_FOR_ANSIBLE" = false ]; then
     IRSIBLE_FOR_IRONIC=false
 fi
-
-WORKDIR=$(readlink -f $0 | xargs dirname)
-FINALDIR="$WORKDIR/final"
 
 TC=1001
 STAFF=50

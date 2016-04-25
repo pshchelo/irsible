@@ -99,9 +99,10 @@ Advanced options
 SSH access keys
 ---------------
 
+By default the provided key ``irsible_key.pub`` is put in ``tc`` user's
+``authrozed_keys``, the corresponding private key is ``irsible_key``.
 
-By default the key ``$HOME/.ssh/id_rsa.pub`` is put in ``tc`` user's
-``authrozed_keys``. To supply another public key, set this variable
+To supply another public key, set the following variable
 in the shell before building the image::
 
     export IRSIBLE_SSH_KEY=<path-to-the-public-key>
