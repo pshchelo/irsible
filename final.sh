@@ -2,6 +2,7 @@
 
 set -ex
 WORKDIR=$(readlink -f $0 | xargs dirname)
+BUILDDIR="$WORKDIR/build"
 FINALDIR="$WORKDIR/final"
 FINAL_TC_VER=7
 
@@ -88,6 +89,11 @@ if [ "$IRSIBLE_FOR_ANSIBLE" = true ]; then
         # install compiled qemu-utils
         cp $WORKDIR/build_files/qemu-utils.* $FINALDIR/tmp/builtin/optional
         echo "qemu-utils.tcz" | $TC_CHROOT_CMD tee -a /tmp/builtin/onboot.lst
+
+
+        # Download get-pip
+        ( cd "$FINALDIR/tmp" && wget https://bootstrap.pypa.io/get-pip.py )
+
         # install python-requests - used in streaming download of raw images
         cd $FINALDIR/tmp
         wget https://github.com/kennethreitz/requests/archive/v2.9.1.tar.gz -O requests-2.9.1.tar.gz
@@ -96,6 +102,12 @@ if [ "$IRSIBLE_FOR_ANSIBLE" = true ]; then
         sudo rm -rf $FINALDIR/tmp/requests-2.9.1*
         # save some MB, leave only compiled python code
         sudo find $FINALDIR/usr/local/lib/python2.7/site-packages/requests/ -type f -name "*.py" -exec rm {} +
+
+        # Copy python wheels from build to final dir
+        cp -Rp "$BUILDDIR/tmp/wheels" "$FINALDIR/tmp/wheelhouse"
+
+        # install python-netifaces
+        $CHROOT_CMD python /tmp/get-pip.py --no-wheel --no-index --find-links=file:///tmp/wheelhouse netifaces
     fi
 fi
 
@@ -111,6 +123,9 @@ sudo rm -rf $FINALDIR/tmp/overides
 
 # Copy bootlocal.sh to opt
 sudo cp "$WORKDIR/build_files/bootlocal.sh" "$FINALDIR/opt/."
+
+# Copy ansible callback
+sudo cp "$WORKDIR/build_files/callback.py" "$FINALDIR/opt/."
 
 # Disable ZSwap
 sudo sed -i '/# Main/a NOZSWAP=1' "$FINALDIR/etc/init.d/tc-config"

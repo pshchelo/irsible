@@ -9,3 +9,6 @@ date
 
 # Start SSHd
 /usr/local/etc/init.d/openssh start
+
+# Run ansible callback
+python /opt/callback.py
