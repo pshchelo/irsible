@@ -11,7 +11,7 @@ fi
 
 WORKDIR=$(readlink -f $0 | xargs dirname)
 BUILDDIR="$WORKDIR/build"
-BUILD_TC_VER=6
+TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL-"http://repo.tinycorelinux.net/"}
 
 TC=1001
 STAFF=50
@@ -22,12 +22,22 @@ TC_CHROOT_CMD="sudo chroot --userspec=$TC:$STAFF $BUILDDIR /usr/bin/env -i PATH=
 
 echo "Building irsible:"
 
+# Ensure we have an extended sudo to prevent the need to enter a password over
+# and over again.
+sudo -v
+
+# If an old build directory exists remove it
+if [ -d "$BUILDDIR" ]; then
+    sudo rm -rf "$BUILDDIR"
+fi
+
 ##############################################
 # Download and Cache Tiny Core Files
 ##############################################
 
 cd $WORKDIR/build_files
-wget -N http://distro.ibiblio.org/tinycorelinux/${BUILD_TC_VER}.x/x86_64/release/distribution_files/corepure64.gz -O corepure64-${BUILD_TC_VER}.gz
+wget -N $TINYCORE_MIRROR_URL/7.x/x86_64/release/distribution_files/corepure64.gz
+wget -N $TINYCORE_MIRROR_URL/7.x/x86_64/release/distribution_files/vmlinuz64
 cd $WORKDIR
 
 # Finish here if not building for Ironic's ansible-deploy
@@ -44,26 +54,31 @@ fi
 mkdir "$BUILDDIR"
 
 # Extract rootfs from .gz file
-( cd "$BUILDDIR" && zcat $WORKDIR/build_files/corepure64-${BUILD_TC_VER}.gz | sudo cpio -i -H newc -d )
+( cd "$BUILDDIR" && zcat $WORKDIR/build_files/corepure64.gz | sudo cpio -i -H newc -d )
 
 # Download Qemu-utils source
 git clone git://git.qemu-project.org/qemu.git $BUILDDIR/tmp/qemu --depth=1 --branch v2.5.1
 
+# Configure mirror
+sudo sh -c "echo $TINYCORE_MIRROR_URL > $BUILDDIR/opt/tcemirror"
+
 sudo cp /etc/resolv.conf $BUILDDIR/etc/resolv.conf
+
+trap "sudo umount $BUILDDIR/proc; sudo umount $BUILDDIR/dev/pts" EXIT
 sudo mount --bind /proc $BUILDDIR/proc
+sudo mount --bind /dev/pts $BUILDDIR/dev/pts
+
 $CHROOT_CMD mkdir /etc/sysconfig/tcedir
 $CHROOT_CMD chmod a+rwx /etc/sysconfig/tcedir
 $CHROOT_CMD touch /etc/sysconfig/tcuser
 $CHROOT_CMD chmod a+rwx /etc/sysconfig/tcuser
 
 mkdir $BUILDDIR/tmp/overides
-cp $WORKDIR/build_files/fakeuname${BUILD_TC_VER} $BUILDDIR/tmp/overides/uname
+cp $WORKDIR/build_files/fakeuname $BUILDDIR/tmp/overides/uname
 
 while read line; do
     $TC_CHROOT_CMD tce-load -wci $line
 done < $WORKDIR/build_files/buildreqs.lst
-
-sudo umount $BUILDDIR/proc
 
 # Build qemu-utils
 rm -rf $WORKDIR/build_files/qemu-utils.tcz
