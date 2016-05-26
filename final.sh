@@ -66,12 +66,17 @@ cp $WORKDIR/build_files/fakeuname $FINALDIR/tmp/overides/uname
 
 # Install and configure bare minimum for SSH access
 $TC_CHROOT_CMD tce-load -wi openssh
-# Configure OpsnSSH
-$CHROOT_CMD cp /usr/local/etc/ssh/sshd_config_example /usr/local/etc/ssh/sshd_config || $CHROOT_CMD cp /usr/local/etc/ssh/sshd_config.orig /usr/local/etc/ssh/sshd_config
+# Configure OpenSSH
+$CHROOT_CMD cp /usr/local/etc/ssh/sshd_config.orig /usr/local/etc/ssh/sshd_config
 echo "PasswordAuthentication no" | $CHROOT_CMD tee -a /usr/local/etc/ssh/sshd_config
-$CHROOT_CMD /usr/local/etc/init.d/openssh keygen
+# Generate and configure host keys - RSA, DSA, Ed25519
+# NOTE(pas-ha) ECDSA host key will still be re-generated fresh on every image boot
+$CHROOT_CMD ssh-keygen -t rsa -N "" -f /usr/local/etc/ssh/ssh_host_rsa_key
+$CHROOT_CMD ssh-keygen -t dsa -N "" -f /usr/local/etc/ssh/ssh_host_dsa_key
+$CHROOT_CMD ssh-keygen -t ed25519 -N "" -f /usr/local/etc/ssh/ssh_host_ed25519_key
 echo "HostKey /usr/local/etc/ssh/ssh_host_rsa_key" | $CHROOT_CMD tee -a /usr/local/etc/ssh/sshd_config
 echo "HostKey /usr/local/etc/ssh/ssh_host_dsa_key" | $CHROOT_CMD tee -a /usr/local/etc/ssh/sshd_config
+echo "HostKey /usr/local/etc/ssh/ssh_host_ed25519_key" | $CHROOT_CMD tee -a /usr/local/etc/ssh/sshd_config
 
 # setup user and SSH keys
 $CHROOT_CMD mkdir -p /home/tc
