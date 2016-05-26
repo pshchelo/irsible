@@ -98,23 +98,27 @@ if [ "$IRSIBLE_FOR_ANSIBLE" = true ]; then
         # Ensure tinyipa picks up installed kernel modules
         $CHROOT_CMD depmod -a `$WORKDIR/build_files/fakeuname -r`
 
-        # Download get-pip
-        ( cd "$FINALDIR/tmp" && wget https://bootstrap.pypa.io/get-pip.py )
-
-        # install python-requests - used in streaming download of raw images
-        cd $FINALDIR/tmp
-        wget https://github.com/kennethreitz/requests/archive/v2.9.1.tar.gz -O requests-2.9.1.tar.gz
-        tar xzf requests-2.9.1.tar.gz
-        $CHROOT_CMD sh -c "cd /tmp/requests-2.9.1 && python setup.py install"
-        sudo rm -rf $FINALDIR/tmp/requests-2.9.1*
-        # save some MB, leave only compiled python code
-        sudo find $FINALDIR/usr/local/lib/python2.7/site-packages/requests/ -type f -name "*.py" -exec rm {} +
-
+        # Install Python dependencies
+        # Download pip bootstrap
+        cd "$FINALDIR/tmp"
+        wget https://bootstrap.pypa.io/get-pip.py
         # Copy python wheels from build to final dir
         cp -Rp "$BUILDDIR/tmp/wheels" "$FINALDIR/tmp/wheelhouse"
-
-        # install python-netifaces
-        $CHROOT_CMD python /tmp/get-pip.py --no-wheel --no-index --find-links=file:///tmp/wheelhouse netifaces
+        # Copy python requirements file
+        cp $WORKDIR/build_files/requirements.txt $FINALDIR/tmp/requirements.txt
+        # install python requirements
+        $CHROOT_CMD python /tmp/get-pip.py --no-wheel --no-index --find-links=file:///tmp/wheelhouse -r /tmp/requirements.txt
+        # cleanup pip and wheels
+        rm -rf $FINALDIR/tmp/wheelhouse
+        rm -rf $FINALDIR/tmp/get-pip.py
+        rm -rf $FINALDIR/tmp/requirements.txt
+        # Uninstall pip and setuptools
+        $CHROOT_CMD pip uninstall -y pip setuptools
+        # Byte-compile all site-packages
+        set +e
+        $CHROOT_CMD python -m compileall /usr/local/lib/python2.7/site-packages
+        set -e
+        find $FINALDIR/usr/local/lib/python2.7/site-packages -name "*.py" | sudo xargs rm
     fi
 fi
 

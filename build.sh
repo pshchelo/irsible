@@ -87,24 +87,12 @@ cd $WORKDIR/build_files && mksquashfs $BUILDDIR/tmp/qemu-utils qemu-utils.tcz &&
 # Create qemu-utils.tcz.dep
 echo "glib2.tcz" > qemu-utils.tcz.dep
 
-
-# Download get-pip into ramdisk
-( cd "$BUILDDIR/tmp" && wget https://bootstrap.pypa.io/get-pip.py )
-
-# Create directory for python local mirror
-mkdir -p "$BUILDDIR/tmp/localpip"
-
-# install python-netifaces for ansible callback
-cd $BUILDDIR/tmp
-wget https://pypi.python.org/packages/18/fa/dd13d4910aea339c0bb87d2b3838d8fd923c11869b1f6e741dbd0ff3bc00/netifaces-0.10.4.tar.gz -O netifaces-0.10.4.tar.gz
-tar xzf netifaces-0.10.4.tar.gz
-
-# Build python wheels
+# Build python wheels for dependencies
+cd "$BUILDDIR/tmp"
+wget https://bootstrap.pypa.io/get-pip.py
 $CHROOT_CMD python /tmp/get-pip.py
-$CHROOT_CMD pip install pbr
+#$CHROOT_CMD pip install pbr
+cp $WORKDIR/build_files/requirements.txt $BUILDDIR/tmp/requirements.txt
 $CHROOT_CMD pip wheel --wheel-dir /tmp/wheels setuptools
 $CHROOT_CMD pip wheel --wheel-dir /tmp/wheels pip
-
-$CHROOT_CMD sh -c "cd /tmp/netifaces-0.10.4 && python setup.py sdist --dist-dir /tmp/localpip --quiet"
-$CHROOT_CMD pip wheel --no-index --pre --wheel-dir /tmp/wheels --find-links=/tmp/localpip --find-links=/tmp/wheels netifaces==0.10.4
-
+$CHROOT_CMD pip wheel --pre --wheel-dir /tmp/wheels -r /tmp/requirements.txt
