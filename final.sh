@@ -132,8 +132,12 @@ sudo rm -rf $FINALDIR/tmp/overides
 # Copy bootlocal.sh to opt
 sudo cp "$WORKDIR/build_files/bootlocal.sh" "$FINALDIR/opt/."
 
-# Copy ansible callback
-sudo cp "$WORKDIR/build_files/callback.py" "$FINALDIR/opt/."
+if [ "$IRSIBLE_FOR_IRONIC" ]; then
+    # Copy and register Ansible callback
+    sudo cp "$WORKDIR/build_files/callback.py" "$FINALDIR/opt/."
+    echo "# Run Ansible callback" | $CHROOT_CMD tee -a /opt/bootlocal.sh
+    echo "python /opt/callback.py" | $CHROOT_CMD tee -a /opt/bootlocal.sh
+fi
 
 # Disable ZSwap
 sudo sed -i '/# Main/a NOZSWAP=1' "$FINALDIR/etc/init.d/tc-config"
