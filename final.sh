@@ -125,6 +125,18 @@ if [ "$IRSIBLE_FOR_ANSIBLE" = true ]; then
         set -e
         find $FINALDIR/usr/local/lib/python2.7/site-packages -name "*.py" | sudo xargs rm
     fi
+
+    # NOTE(pas-ha) Apparently on TC Ansible is not searching for 
+    # executables in the /usr/local/sbin path
+    # Symlink everything from there to /usr/sbin which is being searched
+    cd $FINALDIR/usr/local/sbin
+    for target in *
+    do
+        if [ ! -f "$FINALDIR/usr/sbin/$target" ]
+        then
+            $CHROOT_CMD ln -s "/usr/local/sbin/$target" "/usr/sbin/$target"
+        fi
+    done
 fi
 
 # Unmount /proc and clean up everything
