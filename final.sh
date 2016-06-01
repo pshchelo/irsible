@@ -1,18 +1,23 @@
 #!/bin/bash
 
 set -ex
-WORKDIR=$(readlink -f $0 | xargs dirname)
-BUILDDIR="$WORKDIR/build"
-FINALDIR="$WORKDIR/final"
 
-IRSIBLE_SSH_KEY=${IRSIBLE_SSH_KEY:-$WORKDIR/irsible_key.pub}
+TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL-"http://repo.tinycorelinux.net/"}
 IRSIBLE_FOR_ANSIBLE=${IRSIBLE_FOR_ANSIBLE:-true}
 IRSIBLE_FOR_IRONIC=${IRSIBLE_FOR_IRONIC:-true}
-TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL-"http://repo.tinycorelinux.net/"}
+IRSIBLE_SSH_KEY=${IRSIBLE_SSH_KEY:-$WORKDIR/irsible_key.pub}
 
 if [ "$IRSIBLE_FOR_ANSIBLE" = false ]; then
     IRSIBLE_FOR_IRONIC=false
 fi
+
+if [ "$IRSIBLE_FOR_IRONIC" = true ]; then
+    IRSIBLE_FOR_ANSIBLE=true
+fi
+
+WORKDIR=$(readlink -f $0 | xargs dirname)
+BUILDDIR="$WORKDIR/build"
+FINALDIR="$WORKDIR/final"
 
 TC=1001
 STAFF=50

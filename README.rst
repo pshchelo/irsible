@@ -169,3 +169,26 @@ On the other hand those can be installed at run-time with
 so you can easily extend the ``bootstrap.yaml`` playbook. See this link for
 more info on TinyCore's GNU/Linux compatibility:
 http://tinycorelinux.net/faq.html#compatibility
+
+List of available env variables
+===============================
+
+IRSIBLE_FOR_ANSIBLE (true)
+    Installs and configures Python and OpenSSH server.
+    Setting to ``false`` overrides ``IRSIBLE_FOR_IRONIC`` to ``false``.
+
+IRSIBLE_FOR_IRONIC (true)
+    Installs additional software needed by Ironic's Ansible-deploy driver.
+    Setting to ``true`` overrides ``IRSIBLE_FOR_ANSIBLE`` to ``true``.
+
+IRSIBLE_SSH_KEY (irsible_key.pub)
+    Path to public SSH key to bake into the image as ``authorized_keys`` for
+    user ``tc``.
+
+BRANCH_PATH (not set)
+    When set, ``-$BRANCH_PATH`` is appended to names of produced files,
+    e.g. setting to ``master`` will produce files ``irsible-master.gz`` etc.
+
+TINYCORE_MIRROR_URL (http://repo.tinycorelinux.net/)
+    Allows to set custom location of repo with TinyCore packages.
+

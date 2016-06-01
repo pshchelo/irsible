@@ -2,6 +2,7 @@
 
 set -ex
 
+TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL-"http://repo.tinycorelinux.net/"}
 IRSIBLE_FOR_ANSIBLE=${IRSIBLE_FOR_ANSIBLE:-true}
 IRSIBLE_FOR_IRONIC=${IRSIBLE_FOR_IRONIC:-true}
 
@@ -9,9 +10,12 @@ if [ "$IRSIBLE_FOR_ANSIBLE" = false ]; then
     IRSIBLE_FOR_IRONIC=false
 fi
 
+if [ "$IRSIBLE_FOR_IRONIC" = true ]; then
+    IRSIBLE_FOR_ANSIBLE=true
+fi
+
 WORKDIR=$(readlink -f $0 | xargs dirname)
 BUILDDIR="$WORKDIR/build"
-TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL-"http://repo.tinycorelinux.net/"}
 
 TC=1001
 STAFF=50
