@@ -40,8 +40,8 @@ For building an ISO you'll also need:
 * genisoimage
 
 
-Bild Instructions:
-==================
+Build Instructions:
+===================
 To create a new ramdisk, run::
 
     make
@@ -100,9 +100,8 @@ Advanced options
 SSH access keys
 ---------------
 
-By default the provided key ``irsible_key.pub`` is put in ``tc`` user's
-``authrozed_keys``, the corresponding private key is ``irsible_key``.
-
+By default the ``id_rsa.pub`` or ``ir_dsa.pub`` SSH keys of the user who is
+building the image will be added to ``authorized_keys``.
 To supply another public key, set the following variable
 in the shell before building the image::
 
@@ -173,22 +172,35 @@ http://tinycorelinux.net/faq.html#compatibility
 List of available env variables
 ===============================
 
-IRSIBLE_FOR_ANSIBLE (true)
-    Installs and configures Python and OpenSSH server.
-    Setting to ``false`` overrides ``IRSIBLE_FOR_IRONIC`` to ``false``.
+IRSIBLE_FOR_ANSIBLE
+    :Required: No
+    :Default: true
+    :Description: Installs and configures Python and OpenSSH server.
+        Setting to ``false`` overrides ``IRSIBLE_FOR_IRONIC`` to ``false``.
 
-IRSIBLE_FOR_IRONIC (true)
-    Installs additional software needed by Ironic's Ansible-deploy driver.
-    Setting to ``true`` overrides ``IRSIBLE_FOR_ANSIBLE`` to ``true``.
+IRSIBLE_FOR_IRONIC
+    :Required: No
+    :Default: true
+    :Description: Installs additional software needed by
+        Ironic's Ansible-deploy driver.
+        Setting to ``true`` overrides ``IRSIBLE_FOR_ANSIBLE`` to ``true``.
 
-IRSIBLE_SSH_KEY (irsible_key.pub)
-    Path to public SSH key to bake into the image as ``authorized_keys`` for
-    user ``tc``.
+IRSIBLE_SSH_KEY
+    :Required: No
+    :Default: ${HOME}/.ssh/id_{rsa,dsa}.pub
+    :Description: Path to public SSH key to bake into the image as
+        ``authorized_keys`` for user ``tc``.
 
-BRANCH_PATH (not set)
-    When set, ``-$BRANCH_PATH`` is appended to names of produced files,
-    e.g. setting to ``master`` will produce files ``irsible-master.gz`` etc.
+BRANCH_PATH
+    :Required: No
+    :Default: not set
+    :Description: When set, ``-$BRANCH_PATH`` is appended to names of
+        produced files, e.g. setting to ``master`` will produce files
+        ``irsible-master.gz`` etc.
 
-TINYCORE_MIRROR_URL (http://repo.tinycorelinux.net/)
-    Allows to set custom location of repo with TinyCore packages.
+TINYCORE_MIRROR_URL
+    :Required: No
+    :Default: http://repo.tinycorelinux.net/
+    :Description: Allows to set custom location of repo with
+        TinyCore packages.
 

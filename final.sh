@@ -5,7 +5,7 @@ set -ex
 TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL-"http://repo.tinycorelinux.net/"}
 IRSIBLE_FOR_ANSIBLE=${IRSIBLE_FOR_ANSIBLE:-true}
 IRSIBLE_FOR_IRONIC=${IRSIBLE_FOR_IRONIC:-true}
-IRSIBLE_SSH_KEY=${IRSIBLE_SSH_KEY:-$WORKDIR/irsible_key.pub}
+IRSIBLE_SSH_KEY=${IRSIBLE_SSH_KEY:-}
 
 if [ "$IRSIBLE_FOR_ANSIBLE" = false ]; then
     IRSIBLE_FOR_IRONIC=false
@@ -87,7 +87,18 @@ echo "HostKey /usr/local/etc/ssh/ssh_host_ed25519_key" | $CHROOT_CMD tee -a /usr
 $CHROOT_CMD mkdir -p /home/tc
 $CHROOT_CMD chown -R tc.staff /home/tc
 $TC_CHROOT_CMD mkdir -p /home/tc/.ssh
-sudo cp $IRSIBLE_SSH_KEY $FINALDIR/home/tc/.ssh/authorized_keys
+if [ -n "$IRSIBLE_SSH_KEY" ]; then
+    if [ -f "$IRSIBLE_SSH_KEY" ]; then
+        cat $IRSIBLE_SSH_KEY | $TC_CHROOT_CMD tee /home/tc/.ssh/authorized_keys
+    fi
+else
+    for fmt in rsa dsa; do
+        if [ -f "$HOME/.ssh/id_$fmt.pub" ]; then
+            cat $HOME/.ssh/id_$fmt.pub | $TC_CHROOT_CMD tee /home/tc/.ssh/authorized_keys
+            break
+        fi
+    done
+fi
 $CHROOT_CMD chown tc.staff /home/tc/.ssh/authorized_keys
 $TC_CHROOT_CMD chmod 600 /home/tc/.ssh/authorized_keys 
 
