@@ -2,10 +2,11 @@
 
 set -ex
 
-TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL-"http://repo.tinycorelinux.net/"}
+TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-"http://repo.tinycorelinux.net/"}
 IRSIBLE_FOR_ANSIBLE=${IRSIBLE_FOR_ANSIBLE:-true}
 IRSIBLE_FOR_IRONIC=${IRSIBLE_FOR_IRONIC:-true}
 IRSIBLE_SSH_KEY=${IRSIBLE_SSH_KEY:-}
+IRSIBLE_UNSQUASH=${IRSIBLE_UNSQUASH:-false}
 
 if [ "$IRSIBLE_FOR_ANSIBLE" = false ]; then
     IRSIBLE_FOR_IRONIC=false
@@ -13,6 +14,14 @@ fi
 
 if [ "$IRSIBLE_FOR_IRONIC" = true ]; then
     IRSIBLE_FOR_ANSIBLE=true
+fi
+
+TCE_FLAG=""
+COMPILE_PYTHON=/usr/local/lib/python2.7/site-packages
+if [ "$IRSIBLE_UNSQUASH" = true ]; then
+    echo "Will unpack all TC packages to system!"
+    TCE_FLAG="c"
+    COMPILE_PYTHON=/usr/local/lib/python2.7
 fi
 
 WORKDIR=$(readlink -f $0 | xargs dirname)
@@ -70,7 +79,7 @@ mkdir $FINALDIR/tmp/overides
 cp $WORKDIR/build_files/fakeuname $FINALDIR/tmp/overides/uname
 
 # Install and configure bare minimum for SSH access
-$TC_CHROOT_CMD tce-load -wi openssh
+$TC_CHROOT_CMD tce-load -wi${TCE_FLAG} openssh
 # Configure OpenSSH
 $CHROOT_CMD cp /usr/local/etc/ssh/sshd_config.orig /usr/local/etc/ssh/sshd_config
 echo "PasswordAuthentication no" | $CHROOT_CMD tee -a /usr/local/etc/ssh/sshd_config
@@ -102,21 +111,26 @@ fi
 $CHROOT_CMD chown tc.staff /home/tc/.ssh/authorized_keys
 $TC_CHROOT_CMD chmod 600 /home/tc/.ssh/authorized_keys 
 
+# Copy bootlocal.sh to opt - only starts SSH
+sudo cp "$WORKDIR/build_files/bootlocal.sh" "$FINALDIR/opt/."
+
 if [ "$IRSIBLE_FOR_ANSIBLE" = true ]; then
     # install Python
-    $TC_CHROOT_CMD tce-load -wi python
-    # Symlink Python to place expected by Ansible by default
-    $CHROOT_CMD ln -s /usr/local/bin/python /usr/bin/python
+    $TC_CHROOT_CMD tce-load -wi${TCE_FLAG} python
     if [ "$IRSIBLE_FOR_IRONIC" = true ]; then
         # install other packages
         while read line; do
-            $TC_CHROOT_CMD tce-load -wi $line
+            $TC_CHROOT_CMD tce-load -wi${TCE_FLAG} $line
         done < $WORKDIR/build_files/finalreqs.lst
         # install compiled qemu-utils
         cp $WORKDIR/build_files/qemu-utils.* $FINALDIR/tmp/builtin/optional
-        echo "qemu-utils.tcz" | $TC_CHROOT_CMD tee -a /tmp/builtin/onboot.lst
+        if [ "$IRSIBLE_UNSQUASH" = true ]; then
+            $TC_CHROOT_CMD tce-load -ic /tmp/builtin/optional/qemu-utils.tcz
+        else
+            echo "qemu-utils.tcz" | $TC_CHROOT_CMD tee -a /tmp/builtin/onboot.lst
+        fi
 
-        # Ensure tinyipa picks up installed kernel modules
+        # Ensure irsible picks up installed kernel modules
         $CHROOT_CMD depmod -a `$WORKDIR/build_files/fakeuname -r`
 
         # Install Python dependencies
@@ -135,16 +149,24 @@ if [ "$IRSIBLE_FOR_ANSIBLE" = true ]; then
         rm -rf $FINALDIR/tmp/requirements.txt
         # Uninstall pip and setuptools
         $CHROOT_CMD pip uninstall -y pip setuptools
-        # Byte-compile all site-packages
+        
+        # Byte-compile appropriate Python parts
         set +e
-        $CHROOT_CMD python -m compileall /usr/local/lib/python2.7/site-packages
+        $CHROOT_CMD python -m compileall $COMPILE_PYTHON
         set -e
-        find $FINALDIR/usr/local/lib/python2.7/site-packages -name "*.py" | sudo xargs rm
+        find $FINALDIR$COMPILE_PYTHON -name "*.py" | sudo xargs rm
+
+        # Copy and register Ansible callback
+        sudo cp "$WORKDIR/build_files/ironic-callback" "$FINALDIR/opt/."
+        echo "# Run Ansible callback" | $CHROOT_CMD tee -a /opt/bootlocal.sh
+        echo "python /opt/ironic-callback &" | $CHROOT_CMD tee -a /opt/bootlocal.sh
     fi
 
-    # NOTE(pas-ha) Apparently on TC Ansible is not searching for 
-    # executables in the /usr/local/sbin path
-    # Symlink everything from there to /usr/sbin which is being searched
+    # NOTE(pas-ha) Apparently on TC Ansible's 'command' module is
+    # not searching for executables in the /usr/local/(s)bin paths.
+    # Symlink everything from there to /usr/(s)bin which is being searched,
+    # so that 'command' picks full utilities installed by 'util-linux'
+    # instead of built-in BusyBox ones.
     cd $FINALDIR/usr/local/sbin
     for target in *
     do
@@ -153,32 +175,34 @@ if [ "$IRSIBLE_FOR_ANSIBLE" = true ]; then
             $CHROOT_CMD ln -s "/usr/local/sbin/$target" "/usr/sbin/$target"
         fi
     done
+    # this also includes symlinking Python to the place expected by Ansible
+    cd $FINALDIR/usr/local/bin
+    for target in *
+    do
+        if [ ! -f "$FINALDIR/usr/bin/$target" ]
+        then
+            $CHROOT_CMD ln -s "/usr/local/bin/$target" "/usr/bin/$target"
+        fi
+    done
 fi
 
 # Unmount /proc and clean up everything
 sudo umount $FINALDIR/proc
-sudo umount $FINALDIR/tmp/tcloop/*
-sudo rm -rf $FINALDIR/tmp/tcloop
+if [ "$IRSIBLE_UNSQUASH" = false ]; then
+    sudo umount $FINALDIR/tmp/tcloop/*
+    sudo rm -rf $FINALDIR/tmp/tcloop
+else
+    sudo rm -rf $FINALDIR/tmp/builtin
+fi
 sudo rm -rf $FINALDIR/usr/local/tce.installed
-sudo mv $FINALDIR/etc/resolv.conf.old $FINALDIR/etc/resolv.conf
 sudo mv $FINALDIR/opt/tcemirror.old $FINALDIR/opt/tcemirror
+sudo mv $FINALDIR/etc/resolv.conf.old $FINALDIR/etc/resolv.conf
 sudo rm $FINALDIR/etc/sysconfig/tcuser
 sudo rm $FINALDIR/etc/sysconfig/tcedir
 sudo rm -rf $FINALDIR/tmp/overides
 
-# Copy bootlocal.sh to opt
-sudo cp "$WORKDIR/build_files/bootlocal.sh" "$FINALDIR/opt/."
-
-if [ "$IRSIBLE_FOR_IRONIC" ]; then
-    # Copy and register Ansible callback
-    sudo cp "$WORKDIR/build_files/callback.py" "$FINALDIR/opt/."
-    echo "# Run Ansible callback" | $CHROOT_CMD tee -a /opt/bootlocal.sh
-    echo "python /opt/callback.py" | $CHROOT_CMD tee -a /opt/bootlocal.sh
-fi
-
 # Disable ZSwap
 sudo sed -i '/# Main/a NOZSWAP=1' "$FINALDIR/etc/init.d/tc-config"
-
 
 ###############################
 # Pack everything back to image

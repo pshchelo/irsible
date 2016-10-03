@@ -2,9 +2,10 @@
 
 set -ex
 
-TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL-"http://repo.tinycorelinux.net/"}
+TINYCORE_MIRROR_URL=${TINYCORE_MIRROR_URL:-"http://repo.tinycorelinux.net/"}
 IRSIBLE_FOR_ANSIBLE=${IRSIBLE_FOR_ANSIBLE:-true}
 IRSIBLE_FOR_IRONIC=${IRSIBLE_FOR_IRONIC:-true}
+QEMU_BRANCH=${QEMU_BRANCH:-"v2.6.1"}
 
 if [ "$IRSIBLE_FOR_ANSIBLE" = false ]; then
     IRSIBLE_FOR_IRONIC=false
@@ -39,6 +40,9 @@ fi
 # Download and Cache Tiny Core Files
 ##############################################
 
+# TODO(pas-ha) make a local mirror/cache with all required TC packages
+# (as separate pre-stage?)
+
 cd $WORKDIR/build_files
 wget -N $TINYCORE_MIRROR_URL/7.x/x86_64/release/distribution_files/corepure64.gz
 wget -N $TINYCORE_MIRROR_URL/7.x/x86_64/release/distribution_files/vmlinuz64
@@ -61,7 +65,7 @@ mkdir "$BUILDDIR"
 ( cd "$BUILDDIR" && zcat $WORKDIR/build_files/corepure64.gz | sudo cpio -i -H newc -d )
 
 # Download Qemu-utils source
-git clone git://git.qemu-project.org/qemu.git $BUILDDIR/tmp/qemu --depth=1 --branch v2.5.1
+git clone git://git.qemu-project.org/qemu.git $BUILDDIR/tmp/qemu --depth=1 --branch ${QEMU_BRANCH}
 
 # Configure mirror
 sudo sh -c "echo $TINYCORE_MIRROR_URL > $BUILDDIR/opt/tcemirror"
@@ -87,6 +91,7 @@ done < $WORKDIR/build_files/buildreqs.lst
 # Build qemu-utils
 rm -rf $WORKDIR/build_files/qemu-utils.tcz
 $CHROOT_CMD /bin/sh -c "cd /tmp/qemu && ./configure --disable-system --disable-user --disable-linux-user --disable-bsd-user --disable-guest-agent && make && make install DESTDIR=/tmp/qemu-utils"
+find $BUILDDIR/tmp/qemu-utils/ -type f -executable | xargs file | awk -F ':' '/ELF/ {print $1}' | sudo xargs strip
 cd $WORKDIR/build_files && mksquashfs $BUILDDIR/tmp/qemu-utils qemu-utils.tcz && md5sum qemu-utils.tcz > qemu-utils.tcz.md5.txt
 # Create qemu-utils.tcz.dep
 echo "glib2.tcz" > qemu-utils.tcz.dep
@@ -95,7 +100,6 @@ echo "glib2.tcz" > qemu-utils.tcz.dep
 cd "$BUILDDIR/tmp"
 wget https://bootstrap.pypa.io/get-pip.py
 $CHROOT_CMD python /tmp/get-pip.py
-#$CHROOT_CMD pip install pbr
 cp $WORKDIR/build_files/requirements.txt $BUILDDIR/tmp/requirements.txt
 $CHROOT_CMD pip wheel --wheel-dir /tmp/wheels setuptools
 $CHROOT_CMD pip wheel --wheel-dir /tmp/wheels pip

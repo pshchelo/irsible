@@ -12,18 +12,36 @@ Included packages
 
 * python
 
-  * requests 2.9.1
+  * requests
+  * netifaces
 
 * coreutils
 * parted
 * util-linux
-* qemu-utils (build from 2.5.1 source)
+* qemu-utils (built from source)
+* sgdisk
 
-Current version takes about 80MB of RAM when booted.
 
-Thus with this bootstrap image and Ironic's ansible-deploy driver
-128MB for a virtual baremetal instance is enough to download
-a standard Cirros qcow image into RAM and convert it to disk.
+Operational requirements
+========================
+
+Instance properties
+-------------------
+
+With this bootstrap image and Ironic's ansible-deploy driver,
+140MB for a virtual baremetal node was found to be enough
+to download a standard Cirros qcow image into RAM and convert it to disk.
+
+When setting ``IRSIBLE_UNSQUASH`` to ``true`` (see `Image optimization`_),
+the experimentally found required minimal amount of RAM is 210 MB.
+
+Ironic version
+--------------
+
+When using Ironic callback/heartbeat functionality, *Ironic API must be of
+version 1.22 or newer!*
+This API version is provided by Ironic version ``6.1.0`` or later, or
+OpenStack release ``Newton`` or later.
 
 Build script requirements
 =========================
@@ -101,7 +119,7 @@ SSH access keys
 ---------------
 
 By default the ``id_rsa.pub`` or ``ir_dsa.pub`` SSH keys of the user who is
-building the image will be added to ``authorized_keys``.
+building the image will be added to ``authorized_keys`` for the user ``tc``.
 To supply another public key, set the following variable
 in the shell before building the image::
 
@@ -169,6 +187,20 @@ so you can easily extend the ``bootstrap.yaml`` playbook. See this link for
 more info on TinyCore's GNU/Linux compatibility:
 http://tinycorelinux.net/faq.html#compatibility
 
+Image optimization
+==================
+
+By default, build scripts will install TC packages in a standard manner for
+this distribution, that is as squashfs'ed images mounted to loop devices via
+unionfs.
+
+You can have a bit smaller ramdisk and nicer looking ``mount`` listing
+without all the loop devices mounted at the expense of more required RAM to
+boot the deploy image if you set ``IRSIBLE_UNSQUASH=true`` environment
+variable before building the image. This will install all the packages into
+the ramdisk directly. Use that when your deployment playbooks can be affected
+by all those extra mount points.
+
 List of available env variables
 ===============================
 
@@ -191,6 +223,14 @@ IRSIBLE_SSH_KEY
     :Description: Path to public SSH key to bake into the image as
         ``authorized_keys`` for user ``tc``.
 
+IRSIBLE_UNSQUASH
+    :Required: No
+    :Default: false
+    :Description: Whether to install packages as squashfs images or unpack
+                  them to the system directly. Setting to ``true`` negatively
+                  affects minimal required RAM to boot the image but allows
+                  for cleaner reported mount points (``ansible_mounts`` fact).
+
 BRANCH_PATH
     :Required: No
     :Default: not set
@@ -204,3 +244,8 @@ TINYCORE_MIRROR_URL
     :Description: Allows to set custom location of repo with
         TinyCore packages.
 
+QEMU_BRANCH
+    :Required: No
+    :Default: v2.6.1
+    :Description: Branch/Tag in https://github.com/qemu/qemu repo
+                  to checkout and built ``qemu-utils`` from
